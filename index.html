@@ -10,7 +10,10 @@
     <div class="container">
         <h1>個数入力</h1>
         <form id="entryForm">
-            <input type="text" id="name" placeholder="名前" required>
+            <div id="nameSelectArea">
+                <span id="nameButtons"></span>
+                <input type="text" id="name" placeholder="新しい名前" style="margin-top:8px;">
+            </div>
             <input type="number" id="count" placeholder="すくった数" min="0" required>
             <button type="submit">追加</button>
         </form>
@@ -18,5 +21,47 @@
         <a href="ranking.html">ランキングを見る</a>
     </div>
     <script src="script.js"></script>
+    <script>
+    // Supabaseの設定はscript.jsと同じものを利用
+    const SUPABASE_URL = 'https://zsefdiivatbmzynlovwj.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzZWZkaWl2YXRibXp5bmxvdndqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNDkyNzUsImV4cCI6MjA3MjYyNTI3NX0.sva0fJJrHa43SMtoGLQ2rvWpbmAH2j3UYU8knSrDwNk';
+
+    async function getEntries() {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/ranking?select=*`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        return await res.json();
+    }
+
+    function renderNameButtons() {
+        getEntries().then(entries => {
+            // 名前ごとに最高記録のみ抽出
+            const bestEntries = {};
+            entries.forEach((entry) => {
+                if (!bestEntries[entry.name] || bestEntries[entry.name].count < entry.count) {
+                    bestEntries[entry.name] = entry;
+                }
+            });
+            const uniqueNames = Object.keys(bestEntries);
+            const nameButtons = document.getElementById('nameButtons');
+            nameButtons.innerHTML = '';
+            uniqueNames.forEach(name => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = name;
+                btn.className = 'name-btn';
+                btn.onclick = () => {
+                    document.getElementById('name').value = name;
+                };
+                nameButtons.appendChild(btn);
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', renderNameButtons);
+    </script>
 </body>
 </html>
