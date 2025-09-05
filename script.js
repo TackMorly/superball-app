@@ -14,16 +14,26 @@ async function getEntries() {
 }
 
 async function saveEntry(name, count) {
-    await fetch(`${SUPABASE_URL}/rest/v1/ranking`, {
-        method: 'POST',
-        headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({ name, count })
-    });
+    try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/ranking`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({ name, count })
+        });
+        const data = await res.json();
+        console.log('saveEntry response:', res.status, data);
+        if (!res.ok) {
+            alert('保存に失敗しました: ' + (data.message || JSON.stringify(data)));
+        }
+    } catch (err) {
+        console.error('saveEntry error:', err);
+        alert('保存時にエラーが発生しました: ' + err.message);
+    }
 }
 
 function renderEntries() {
