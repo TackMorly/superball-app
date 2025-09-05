@@ -1,34 +1,55 @@
-// エントリーのローカルストレージ管理
-function getEntries() {
-    return JSON.parse(localStorage.getItem('entries') || '[]');
+
+// Supabase API連携
+const SUPABASE_URL = 'https://zsefdiivatbmzynlovwj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzZWZkaWl2YXRibXp5bmxvdndqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNDkyNzUsImV4cCI6MjA3MjYyNTI3NX0.sva0fJJrHa43SMtoGLQ2rvWpbmAH2j3UYU8knSrDwNk';
+
+async function getEntries() {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/ranking?select=*`, {
+        headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+    });
+    return await res.json();
 }
-function saveEntries(entries) {
-    localStorage.setItem('entries', JSON.stringify(entries));
+
+async function saveEntry(name, count) {
+    await fetch(`${SUPABASE_URL}/rest/v1/ranking`, {
+        method: 'POST',
+        headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({ name, count })
+    });
 }
 
 function renderEntries() {
     const list = document.getElementById('entryList');
     list.innerHTML = '';
-    const entries = getEntries();
-    // 名前ごとに最高記録のみ抽出
-    const bestEntries = {};
-    entries.forEach((entry) => {
-        if (!bestEntries[entry.name] || bestEntries[entry.name].count < entry.count) {
-            bestEntries[entry.name] = entry;
-        }
-    });
-    const uniqueEntries = Object.values(bestEntries);
-    uniqueEntries.forEach((entry, idx) => {
-        const li = document.createElement('li');
-        li.className = 'entry-item';
-        li.innerHTML = `
-            <span>${entry.name}：${entry.count}個</span>
-            <span class="entry-actions">
-                <button class="edit" data-idx="${idx}">編集</button>
-                <button class="delete" data-idx="${idx}">削除</button>
-            </span>
-        `;
-        list.appendChild(li);
+    getEntries().then(entries => {
+        // 名前ごとに最高記録のみ抽出
+        const bestEntries = {};
+        entries.forEach((entry) => {
+            if (!bestEntries[entry.name] || bestEntries[entry.name].count < entry.count) {
+                bestEntries[entry.name] = entry;
+            }
+        });
+        const uniqueEntries = Object.values(bestEntries);
+        uniqueEntries.forEach((entry, idx) => {
+            const li = document.createElement('li');
+            li.className = 'entry-item';
+            li.innerHTML = `
+                <span>${entry.name}：${entry.count}個</span>
+                <span class="entry-actions">
+                    <button class="edit" data-idx="${idx}">編集</button>
+                    <button class="delete" data-idx="${idx}">削除</button>
+                </span>
+            `;
+            list.appendChild(li);
+        });
     });
 }
 
@@ -37,53 +58,59 @@ document.getElementById('entryForm').addEventListener('submit', function(e) {
     const name = document.getElementById('name').value.trim();
     const count = parseInt(document.getElementById('count').value, 10);
     if (!name || isNaN(count)) return;
-    let entries = getEntries();
-    // 既存の同名エントリーの最高記録を更新
-    const existingIdx = entries.findIndex(entry => entry.name === name);
-    if (existingIdx !== -1) {
-        if (entries[existingIdx].count < count) {
-            entries[existingIdx].count = count;
-        }
-    } else {
-        entries.push({ name, count });
-    }
-    saveEntries(entries);
-    renderEntries();
-    this.reset();
+    // Supabaseに新規登録（同名最高記録は表示時に制御）
+    saveEntry(name, count).then(() => {
+        renderEntries();
+        this.reset();
+    });
 });
 
 document.getElementById('entryList').addEventListener('click', function(e) {
-    // 表示は最高記録のみなので、編集・削除もそれに合わせる
-    const list = document.getElementById('entryList');
-    const entries = getEntries();
-    // 名前ごとに最高記録のみ抽出
-    const bestEntries = {};
-    entries.forEach((entry) => {
-        if (!bestEntries[entry.name] || bestEntries[entry.name].count < entry.count) {
-            bestEntries[entry.name] = entry;
+    // Supabaseから取得して編集・削除
+    getEntries().then(entries => {
+        const bestEntries = {};
+        entries.forEach((entry) => {
+            if (!bestEntries[entry.name] || bestEntries[entry.name].count < entry.count) {
+                bestEntries[entry.name] = entry;
+            }
+        });
+        const uniqueEntries = Object.values(bestEntries);
+        if (e.target.classList.contains('delete')) {
+            const idx = e.target.getAttribute('data-idx');
+            const target = uniqueEntries[idx];
+            // 同名の全エントリーを削除
+            Promise.all(
+                entries.filter(entry => entry.name === target.name)
+                    .map(entry => fetch(`${SUPABASE_URL}/rest/v1/ranking?id=eq.${entry.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`
+                        }
+                    }))
+            ).then(() => renderEntries());
+        } else if (e.target.classList.contains('edit')) {
+            const idx = e.target.getAttribute('data-idx');
+            const target = uniqueEntries[idx];
+            const newName = prompt('名前を編集', target.name);
+            if (newName === null) return;
+            const newCount = prompt('すくった数を編集', target.count);
+            if (newCount === null || isNaN(parseInt(newCount, 10))) return;
+            // 同名の全エントリーを削除し、新しいエントリーを追加
+            Promise.all(
+                entries.filter(entry => entry.name === target.name)
+                    .map(entry => fetch(`${SUPABASE_URL}/rest/v1/ranking?id=eq.${entry.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`
+                        }
+                    }))
+            ).then(() => {
+                saveEntry(newName.trim(), parseInt(newCount, 10)).then(() => renderEntries());
+            });
         }
     });
-    const uniqueEntries = Object.values(bestEntries);
-    if (e.target.classList.contains('delete')) {
-        const idx = e.target.getAttribute('data-idx');
-        const target = uniqueEntries[idx];
-        // 同名の全エントリーを削除
-        const newEntries = entries.filter(entry => entry.name !== target.name);
-        saveEntries(newEntries);
-        renderEntries();
-    } else if (e.target.classList.contains('edit')) {
-        const idx = e.target.getAttribute('data-idx');
-        const target = uniqueEntries[idx];
-        const newName = prompt('名前を編集', target.name);
-        if (newName === null) return;
-        const newCount = prompt('すくった数を編集', target.count);
-        if (newCount === null || isNaN(parseInt(newCount, 10))) return;
-        // 同名の全エントリーを削除し、新しいエントリーを追加
-        const newEntries = entries.filter(entry => entry.name !== target.name);
-        newEntries.push({ name: newName.trim(), count: parseInt(newCount, 10) });
-        saveEntries(newEntries);
-        renderEntries();
-    }
 });
 
 document.addEventListener('DOMContentLoaded', renderEntries);
