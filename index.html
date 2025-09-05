@@ -1,1 +1,70 @@
-<!-- このファイルは個数入力ページです。アクセスしづらくするため、URLを直接知らないと入れません。 -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>スーパーボールすくいランキング</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<div class="container">
+		<h1>ランキング</h1>
+	<button id="refreshRanking" style="margin-bottom:12px;">更新</button>
+	<ul id="rankingList"></ul>
+	</div>
+	<script>
+	const SUPABASE_URL = 'https://zsefdiivatbmzynlovwj.supabase.co';
+	const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzZWZkaWl2YXRibXp5bmxvdndqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNDkyNzUsImV4cCI6MjA3MjYyNTI3NX0.sva0fJJrHa43SMtoGLQ2rvWpbmAH2j3UYU8knSrDwNk';
+
+	async function getEntries() {
+		const res = await fetch(`${SUPABASE_URL}/rest/v1/ranking?select=*`, {
+			headers: {
+				'apikey': SUPABASE_KEY,
+				'Authorization': `Bearer ${SUPABASE_KEY}`
+			}
+		});
+		return await res.json();
+	}
+
+	async function renderRanking() {
+		const list = document.getElementById('rankingList');
+		list.innerHTML = '';
+		const entries = await getEntries();
+		// 名前ごとに最高記録のみ抽出
+		const bestEntries = {};
+		entries.forEach((entry) => {
+			if (!bestEntries[entry.name] || bestEntries[entry.name].count < entry.count) {
+				bestEntries[entry.name] = entry;
+			}
+		});
+		const uniqueEntries = Object.values(bestEntries);
+		uniqueEntries.sort((a, b) => b.count - a.count);
+		uniqueEntries.forEach((entry, idx) => {
+			const li = document.createElement('li');
+			let rankClass = '';
+			let style = '';
+			if (idx === 0) {
+				rankClass = 'rank-1';
+				style = 'font-size:2em;font-weight:bold;color:#eab308;background:#fffbe6;border-radius:8px;padding:8px 0;margin-bottom:8px;';
+			} else if (idx === 1) {
+				rankClass = 'rank-2';
+				style = 'font-size:1.5em;font-weight:bold;color:#6b7280;background:#f3f4f6;border-radius:8px;padding:6px 0;margin-bottom:6px;';
+			} else if (idx === 2) {
+				rankClass = 'rank-3';
+				style = 'font-size:1.2em;font-weight:bold;color:#b45309;background:#fef3c7;border-radius:8px;padding:4px 0;margin-bottom:4px;';
+			} else {
+				rankClass = 'rank-other';
+				style = '';
+			}
+			li.className = 'entry-item ' + rankClass;
+			li.innerHTML = `<span style="${style}">${idx+1}位：${entry.name}（${entry.count}個）</span>`;
+			list.appendChild(li);
+		});
+	}
+	document.addEventListener('DOMContentLoaded', () => {
+		renderRanking();
+		document.getElementById('refreshRanking').onclick = renderRanking;
+	});
+	</script>
+</body>
+</html>
