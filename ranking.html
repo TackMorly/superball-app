@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スーパーボールすくいランキング</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>ランキング</h1>
+        <ul id="rankingList"></ul>
+        <a href="index.html">個数入力ページへ</a>
+    </div>
+    <script>
+    function getEntries() {
+        return JSON.parse(localStorage.getItem('entries') || '[]');
+    }
+    function renderRanking() {
+        const list = document.getElementById('rankingList');
+        list.innerHTML = '';
+        const entries = getEntries();
+        entries.sort((a, b) => b.count - a.count);
+        entries.forEach((entry, idx) => {
+            const li = document.createElement('li');
+            li.className = 'entry-item';
+            li.innerHTML = `<span>${idx+1}位：${entry.name}（${entry.count}個）</span>`;
+            list.appendChild(li);
+        });
+    }
+    document.addEventListener('DOMContentLoaded', renderRanking);
+    // ローカルストレージの変更を監視してランキングを自動更新
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'entries') {
+            renderRanking();
+        }
+    });
+    </script>
+</body>
+</html>
