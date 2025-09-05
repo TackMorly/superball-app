@@ -42,8 +42,23 @@
         uniqueEntries.sort((a, b) => b.count - a.count);
         uniqueEntries.forEach((entry, idx) => {
             const li = document.createElement('li');
-            li.className = 'entry-item';
-            li.innerHTML = `<span>${idx+1}位：${entry.name}（${entry.count}個）</span>`;
+            let rankClass = '';
+            let style = '';
+            if (idx === 0) {
+                rankClass = 'rank-1';
+                style = 'font-size:2em;font-weight:bold;color:#eab308;background:#fffbe6;border-radius:8px;padding:8px 0;margin-bottom:8px;';
+            } else if (idx === 1) {
+                rankClass = 'rank-2';
+                style = 'font-size:1.5em;font-weight:bold;color:#6b7280;background:#f3f4f6;border-radius:8px;padding:6px 0;margin-bottom:6px;';
+            } else if (idx === 2) {
+                rankClass = 'rank-3';
+                style = 'font-size:1.2em;font-weight:bold;color:#b45309;background:#fef3c7;border-radius:8px;padding:4px 0;margin-bottom:4px;';
+            } else {
+                rankClass = 'rank-other';
+                style = '';
+            }
+            li.className = 'entry-item ' + rankClass;
+            li.innerHTML = `<span style="${style}">${idx+1}位：${entry.name}（${entry.count}個）</span>`;
             list.appendChild(li);
         });
     }
