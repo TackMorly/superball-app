@@ -9,7 +9,8 @@
 <body>
     <div class="container">
         <h1>ランキング</h1>
-        <ul id="rankingList"></ul>
+    <button id="refreshRanking" style="margin-bottom:12px;">更新</button>
+    <ul id="rankingList"></ul>
         <a href="index.html">個数入力ページへ</a>
     </div>
     <script>
@@ -46,7 +47,11 @@
             list.appendChild(li);
         });
     }
-    document.addEventListener('DOMContentLoaded', renderRanking);
+    document.addEventListener('DOMContentLoaded', () => {
+        renderRanking();
+        setInterval(renderRanking, 5000); // 5秒ごとに自動更新
+        document.getElementById('refreshRanking').onclick = renderRanking;
+    });
     </script>
 </body>
 </html>
